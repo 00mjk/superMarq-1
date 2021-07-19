@@ -13,6 +13,7 @@ class GHZ(Benchmark):
     Device performance is based on the Hellinger fidelity between
     the experimental and ideal probability distributions.
     """
+
     def __init__(self, n: int) -> None:
         self.n = n
 
@@ -35,7 +36,7 @@ class GHZ(Benchmark):
         is given by $(\sum_i{p_i q_i})^2$.
         """
         # Create an equal weighted distribution between the all-0 and all-1 states
-        ideal_dist = {b*self.n : 0.5 for b in ['0', '1']}
+        ideal_dist = {b * self.n: 0.5 for b in ["0", "1"]}
         total_shots = sum(counts.values())
         device_dist = {bitstr: count / total_shots for bitstr, count in counts.items()}
         return hellinger_fidelity(ideal_dist, device_dist)

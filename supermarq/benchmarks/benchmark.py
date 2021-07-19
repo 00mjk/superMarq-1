@@ -15,6 +15,7 @@ class Benchmark:
     be passed in upon creation, and will be used to generate the correct circuit
     and compute the final score.
     """
+
     @abc.abstractmethod
     def circuit(self) -> cirq.Circuit:
         """Returns the quantum circuit corresponding to the current benchmark parameters."""
