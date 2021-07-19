@@ -1,7 +1,5 @@
 import collections
 
-import cirq
-
 from supermarq.benchmarks.ghz import GHZ
 
 
@@ -12,5 +10,4 @@ def test_ghz_circuit() -> None:
 
 def test_ghz_score() -> None:
     ghz = GHZ(3)
-    assert ghz.score({'000':500, '111':500}) == 1
-
+    assert ghz.score(collections.Counter({"000": 500, "111": 500})) == 1

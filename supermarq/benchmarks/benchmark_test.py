@@ -2,9 +2,9 @@ import collections
 
 import cirq
 import pytest
-
 from qiskit.quantum_info import hellinger_fidelity
 from supermarq.benchmarks.benchmark import Benchmark
+
 
 @pytest.fixture
 def benchmark() -> Benchmark:
@@ -17,7 +17,7 @@ def benchmark() -> Benchmark:
 
         def score(self, counts: collections.Counter) -> float:
             dist = {b: c / sum(counts.values()) for b, c in counts.items()}
-            return hellinger_fidelity({'0':0.5, '1':0.5}, dist)
+            return hellinger_fidelity({"0": 0.5, "1": 0.5}, dist)
 
     return _TestBenchmark()
 
@@ -28,4 +28,4 @@ def test_benchmark_circuit(benchmark: Benchmark) -> None:
 
 
 def test_benchmark_score(benchmark: Benchmark) -> None:
-    assert benchmark.score({'0':50, '1':50}) == 1
+    assert benchmark.score(collections.Counter({"0": 50, "1": 50})) == 1
