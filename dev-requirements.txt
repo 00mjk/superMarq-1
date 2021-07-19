@@ -5,5 +5,3 @@ mypy==0.901
 pylint==2.6.0
 pytest==6.1.2
 pytest-cov==2.11.1
-types-Flask==1.1.0
-types-requests==2.25.0

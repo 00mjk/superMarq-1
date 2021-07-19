@@ -10,26 +10,6 @@ on:
     branches: [main]
 
 jobs:
-  #docs:
-  #  name: Build docs
-  #  runs-on: ubuntu-latest
-  #  steps:
-  #    - uses: actions/checkout@v2
-  #    - name: Set up Python 3.8
-  #      uses: actions/setup-python@v2
-  #      with:
-  #        python-version: 3.8
-  #    - name: Install dependencies
-  #      run: |
-  #        python -m pip install --upgrade pip
-  #        if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-  #        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-  #        sudo apt-get install pandoc
-  #        pip install .
-  #    - name: Build docs
-  #      run: |
-  #        dev_tools/build_docs
-
   format:
     name: Format check
     runs-on: ubuntu-latest
@@ -151,27 +131,3 @@ jobs:
       - name: Coverage check
         run: |
           check/coverage
-
-  #integration:
-  #  name: Integration check
-  #  env:
-  #    PRIVATE_REPOS_KEY: ${{ secrets.PRIVATE_REPOS_KEY }}
-  #    GOOGLE_API_KEY: ${{secrets.GOOGLE_API_KEY}}
-  #    IBMQ_TOKEN: ${{ secrets.IBMQ_TOKEN }}
-  #    AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #    AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #  runs-on: ubuntu-latest
-  #  steps:
-  #    - uses: actions/checkout@v2
-  #    - name: Set up Python 3.8
-  #      uses: actions/setup-python@v2
-  #      with:
-  #        python-version: 3.8
-  #    - name: Install dependencies
-  #      run: |
-  #        python -m pip install --upgrade pip
-  #        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-  #        if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-  #    - name: Integration check
-  #      run: |
-  #        check/pytest-integration

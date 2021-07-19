@@ -17,6 +17,5 @@ check/flake8
 check/format
 check/mypy
 check/pylint
-#check/pytest
-#check/coverage
-#dev_tools/build_docs
+check/pytest
+check/coverage
