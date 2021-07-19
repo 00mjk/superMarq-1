@@ -1,9 +1,8 @@
 import collections
 
 import cirq
-import supermarq
-from supermarq.benchmarks.benchmark import Benchmark
 from qiskit.quantum_info import hellinger_fidelity
+from supermarq.benchmarks.benchmark import Benchmark
 
 
 class GHZ(Benchmark):
@@ -28,7 +27,7 @@ class GHZ(Benchmark):
         return circuit
 
     def score(self, counts: collections.Counter) -> float:
-        """Compute the Hellinger fidelity between the experimental and ideal
+        r"""Compute the Hellinger fidelity between the experimental and ideal
         results, i.e., 50% probabilty of measuring the all-zero state and 50%
         probability of measuring the all-one state.
 
