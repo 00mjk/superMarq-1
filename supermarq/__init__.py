@@ -1,4 +1,3 @@
-from . import benchmarks
 from .benchmarks import benchmark
 from .benchmarks import ghz
 
