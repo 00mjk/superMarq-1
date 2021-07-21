@@ -1,5 +1,3 @@
-import collections
-
 from supermarq.benchmarks.hamiltonian_simulation import HamiltonianSimulation
 
 
