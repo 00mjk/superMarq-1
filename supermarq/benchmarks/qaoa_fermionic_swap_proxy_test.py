@@ -17,5 +17,5 @@ def test_qaoa_circuit() -> None:
 
 def test_qaoa_score() -> None:
     qaoa = QAOAFermionicSwapProxy(4)
-    ideal_counts = qaoa.get_ideal_counts(qaoa.circuit())
+    ideal_counts = qaoa._get_ideal_counts(qaoa.circuit())
     assert qaoa.score(collections.Counter({k[::-1]: v for k, v in ideal_counts.items()})) > 0.99
