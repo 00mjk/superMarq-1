@@ -5,7 +5,7 @@ import supermarq as sm
 import time
 
 
-def run_ghz():
+def main():
     service = cirq_superstaq.Service(
             remote_host="https://127.0.0.1:5000",
             api_key="""Paste your SuperstaQ token here""",
@@ -38,4 +38,4 @@ def run_ghz():
 
 
 if __name__=='__main__':
-    run_ghz()
+    main()
