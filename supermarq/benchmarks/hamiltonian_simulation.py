@@ -16,17 +16,17 @@ class HamiltonianSimulation(Benchmark):
     range of benchmark sizes.
     """
 
-    def __init__(self, n: int, dt: int, total_time: int) -> None:
+    def __init__(self, num_qubits: int, time_step: int, total_time: int) -> None:
         """Args:
-        n: int
+        num_qubits: int
             Size of the TFIM chain, equivalent to the number of qubits.
-        dt: int
+        time_step: int
             Size of the timestep in attoseconds.
         total_time:
             Total simulation time of the TFIM chain in attoseconds.
         """
-        self.n = n
-        self.dt = dt
+        self.num_qubits = num_qubits
+        self.time_step = time_step
         self.total_time = total_time
 
     def circuit(self) -> cirq.Circuit:
@@ -40,32 +40,32 @@ class HamiltonianSimulation(Benchmark):
             w_ph: frequency of E" phonon in MoSe2.
             e_ph: strength of electron-phonon coupling.
         """
-        HBAR = 0.658212  # eV*fs
-        JZ = (
-            HBAR * np.pi / 4
+        hbar = 0.658212  # eV*fs
+        jz = (
+            hbar * np.pi / 4
         )  # eV, coupling coeff; Jz<0 is antiferromagnetic, Jz>0 is ferromagnetic
-        FREQ = 0.0048  # 1/fs, frequency of MoSe2 phonon
+        freq = 0.0048  # 1/fs, frequency of MoSe2 phonon
 
-        w_ph = 2 * np.pi * FREQ
-        e_ph = 3 * np.pi * HBAR / (8 * np.cos(np.pi * FREQ))
+        w_ph = 2 * np.pi * freq
+        e_ph = 3 * np.pi * hbar / (8 * np.cos(np.pi * freq))
 
-        qubits = cirq.LineQubit.range(self.n)
+        qubits = cirq.LineQubit.range(self.num_qubits)
         circuit = cirq.Circuit()
 
-        # Build up the circuit over total_time / dt propagation steps
-        for step in range(int(self.total_time / self.dt)):
+        # Build up the circuit over total_time / time_step propagation steps
+        for step in range(int(self.total_time / self.time_step)):
             # Simulate the Hamiltonian term-by-term
-            t = (step + 0.5) * self.dt
+            t = (step + 0.5) * self.time_step
 
             # Single qubit terms
-            psi = -2.0 * e_ph * np.cos(w_ph * t) * self.dt / HBAR
+            psi = -2.0 * e_ph * np.cos(w_ph * t) * self.time_step / hbar
             for qubit in qubits:
                 circuit.append(cirq.H(qubit))
                 circuit.append(cirq.rz(psi)(qubit))
                 circuit.append(cirq.H(qubit))
 
             # Coupling terms
-            psi2 = -2.0 * JZ * self.dt / HBAR
+            psi2 = -2.0 * jz * self.time_step / hbar
             for i in range(len(qubits) - 1):
                 circuit.append(cirq.CNOT(qubits[i], qubits[i + 1]))
                 circuit.append(cirq.rz(psi2)(qubits[i + 1]))
@@ -79,7 +79,7 @@ class HamiltonianSimulation(Benchmark):
     def _get_ideal_counts(self, circuit: cirq.Circuit) -> collections.Counter:
         ideal_counts = {}
         for i, amplitude in enumerate(circuit.final_state_vector()):
-            bitstring = f"{i:>0{self.n}b}"
+            bitstring = f"{i:>0{self.num_qubits}b}"
             probability = np.abs(amplitude) ** 2
             ideal_counts[bitstring] = probability
         return collections.Counter(ideal_counts)
