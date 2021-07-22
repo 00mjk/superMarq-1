@@ -84,7 +84,7 @@ class QAOAFermionicSwapProxy(Benchmark):
 
         # Implement the mixing unitary
         for i in range(self.num_qubits):
-            circuit.append(cirq.rx(beta)(qubits[i]))
+            circuit.append(cirq.rx(2 * beta)(qubits[i]))
 
         # Measure all qubits
         circuit.append(cirq.measure(*qubits))
