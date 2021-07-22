@@ -27,7 +27,11 @@ class QAOAFermionicSwapProxy(Benchmark):
     def _gen_sk_Hamiltonian(self) -> List:
         """randomly pick +1 or -1 for each edge weight"""
         random_weights = list(
-            2 * np.random.randint(low=0, high=1 + 1, size=int(self.num_qubits * (self.num_qubits - 1) / 2)) - 1
+            2
+            * np.random.randint(
+                low=0, high=1 + 1, size=int(self.num_qubits * (self.num_qubits - 1) / 2)
+            )
+            - 1
         )
 
         H = []
