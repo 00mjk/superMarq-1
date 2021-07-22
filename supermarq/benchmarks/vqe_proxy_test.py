@@ -1,8 +1,8 @@
 import collections
-import pytest
 
 import cirq
 import numpy as np
+import pytest
 from supermarq.benchmarks.vqe_proxy import VQEProxy
 
 
