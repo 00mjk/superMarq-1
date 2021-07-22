@@ -16,23 +16,23 @@ class QAOAFermionicSwapProxy(Benchmark):
     simulation.
     """
 
-    def __init__(self, n: int) -> None:
-        self.n = n
+    def __init__(self, num_qubits: int) -> None:
+        self.num_qubits = num_qubits
         # Intialize the benchmark parameters
         #   1. Generate a random instance of an SK graph
         #   2. Find approximately optimal angles (rather than random values)
-        self.H = self._gen_SK_Hamiltonian()
+        self.Hamiltonian = self._gen_sk_Hamiltonian()
         self.params = self._gen_angles()
 
-    def _gen_SK_Hamiltonian(self) -> List:
-        # randomly pick +1 or -1 for each edge weight:
+    def _gen_sk_Hamiltonian(self) -> List:
+        """randomly pick +1 or -1 for each edge weight"""
         random_weights = list(
-            2 * np.random.randint(low=0, high=1 + 1, size=int(self.n * (self.n - 1) / 2)) - 1
+            2 * np.random.randint(low=0, high=1 + 1, size=int(self.num_qubits * (self.num_qubits - 1) / 2)) - 1
         )
 
         H = []
-        for i in range(self.n):
-            for j in range(i + 1, self.n):
+        for i in range(self.num_qubits):
+            for j in range(i + 1, self.num_qubits):
                 H.append([i, j, random_weights.pop()])
 
         np.random.shuffle(H)
@@ -40,23 +40,23 @@ class QAOAFermionicSwapProxy(Benchmark):
         return H
 
     def _gen_swap_network(self, gamma: float, beta: float) -> cirq.Circuit:
-        qubits = cirq.LineQubit.range(self.n)
+        qubits = cirq.LineQubit.range(self.num_qubits)
         circuit = cirq.Circuit()
 
         # initialize |++++>
-        for i in range(self.n):
+        for i in range(self.num_qubits):
             circuit.append(cirq.H(qubits[i]))
 
         # Implement the phase-separator unitary with a swap network
         # The covers indicate which qubits will be swapped at each layer
-        cover_a = [(idx - 1, idx) for idx in range(1, self.n, 2)]
-        cover_b = [(idx - 1, idx) for idx in range(2, self.n, 2)]
+        cover_a = [(idx - 1, idx) for idx in range(1, self.num_qubits, 2)]
+        cover_b = [(idx - 1, idx) for idx in range(2, self.num_qubits, 2)]
 
         # The indices of the virtual map correspond to physical qubits,
         # the value at that index corresponds to the virtual qubit residing there
-        virtual_map = np.arange(self.n)
+        virtual_map = np.arange(self.num_qubits)
 
-        for layer in range(self.n):
+        for layer in range(self.num_qubits):
             cover = [cover_a, cover_b][layer % 2]
             for pair in cover:
                 i, j = pair  # swap physical qubits i and j
@@ -64,7 +64,7 @@ class QAOAFermionicSwapProxy(Benchmark):
                 # Get the corresponding weight between the virtual qubits
                 v_i = virtual_map[i]
                 v_j = virtual_map[j]
-                for edge in self.H:
+                for edge in self.Hamiltonian:
                     if v_i == edge[0] and v_j == edge[1]:
                         weight = edge[2]
                 phi = gamma * weight
@@ -79,7 +79,7 @@ class QAOAFermionicSwapProxy(Benchmark):
                 virtual_map[j], virtual_map[i] = virtual_map[i], virtual_map[j]
 
         # Implement the mixing unitary
-        for i in range(self.n):
+        for i in range(self.num_qubits):
             circuit.append(cirq.rx(beta)(qubits[i]))
 
         # Measure all qubits
@@ -88,9 +88,9 @@ class QAOAFermionicSwapProxy(Benchmark):
         # NOTE: the final qubits in this circuit are in REVERSED order due to the swap network
         return circuit
 
-    def _get_H_for_bitstring(self, bitstring: str) -> float:
+    def _get_energy_for_bitstring(self, bitstring: str) -> float:
         H_val = 0
-        for i, j, weight in self.H:
+        for i, j, weight in self.Hamiltonian:
             if bitstring[i] == bitstring[j]:
                 H_val -= weight  # if edge is UNCUT, weight counts against objective
             else:
@@ -100,7 +100,7 @@ class QAOAFermionicSwapProxy(Benchmark):
     def _get_expected_H_from_probs(self, probabilities: collections.Counter) -> float:
         H_expectation = 0.0
         for bitstring, probability in probabilities.items():
-            H_expectation += probability * self._get_H_for_bitstring(bitstring)
+            H_expectation += probability * self._get_energy_for_bitstring(bitstring)
         return H_expectation
 
     def _get_ideal_counts(self, circuit: cirq.Circuit) -> collections.Counter:
