@@ -1,5 +1,5 @@
 import abc
-import collections
+from typing import Any, Sequence, Union
 
 import cirq
 
@@ -17,9 +17,9 @@ class Benchmark:
     """
 
     @abc.abstractmethod
-    def circuit(self) -> cirq.Circuit:
+    def circuit(self) -> Union[cirq.Circuit, Sequence[cirq.Circuit]]:
         """Returns the quantum circuit corresponding to the current benchmark parameters."""
 
     @abc.abstractmethod
-    def score(self, counts: collections.Counter) -> float:
+    def score(self, counts: Any) -> float:
         """Returns a normalized [0,1] score reflecting device performance."""
