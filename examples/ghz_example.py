@@ -8,8 +8,8 @@ import time
 def main():
     service = cirq_superstaq.Service(
         remote_host="https://127.0.0.1:5000",
-        api_key="""Paste your SuperstaQ token here""",
-        ibmq_token="Paste your IBM Token here",
+        api_key="""ya29.a0ARrdaM8taiSjj8IUgpQaeBmKdgYRfPiZeCRGGDKZxeiaFeZ3driSTUGn-hvAVMzs8iTuWAa08lb4d4KhMa5aRDmtN7LIAXF-o9MuXOMX9KbUmxOKLgEBYJ5Kr51Sm4LDlVKEUJIJLEVRyBIez_4znsYfetpEAw""",
+        ibmq_token="70c3bf3be7eed9265577858ab058697602b7b831f742556d83594f3655fcd192de2160c2469f3432f1ac54263eb8eb38bf7b4d10519eaf2f420f72e0e3ec7f72",
         ibmq_hub="ibm-q-startup",
         ibmq_group="super-tech-labs",
         ibmq_project="default",
@@ -33,7 +33,7 @@ def main():
     print('IBM Counts:', ibm_job.counts())
     print("IBM Benchmark score:", ghz.score(ibm_job.counts()))
     print('IBM Job_id:', ibm_job.job_id())
-    ibm_job = service.get_job("60fade94d13f733f24d134fc")
+    ibm_job = service.get_job(ibm_job.job_id())
     print('IBM Counts:', ibm_job.counts())
 
 
@@ -41,6 +41,7 @@ def main():
     print("Created AWS job:", aws_job)
     print("Current AWS status:", aws_job.status())
 
+    time.sleep(10)
     while aws_job.status() != "Done":
         time.sleep(10)
 
