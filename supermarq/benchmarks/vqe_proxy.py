@@ -1,10 +1,10 @@
-import glob
-import os
-from typing import Counter, List
+import collections
+import copy
+from typing import Counter, List, Tuple
 
 import cirq
 import numpy as np
-from cirq.contrib.qasm_import import circuit_from_qasm
+import scipy
 from supermarq.benchmarks.benchmark import Benchmark
 
 
@@ -20,50 +20,64 @@ class VQEProxy(Benchmark):
     to the noiseless values.
     """
 
-    def __init__(self, num_qubits: int) -> None:
-        if num_qubits != 6 and num_qubits != 10:
-            raise ValueError("Only 6 and 10 qubit vqe benchmarks are currently supported")
+    def __init__(self, num_qubits: int, num_layers: int = 1) -> None:
         self.num_qubits = num_qubits
+        self.num_layers = num_layers
+        self.Hamiltonian = self._gen_tfim_Hamiltonian()
+        self._params = self._gen_angles()
 
-    def circuit(self) -> List[cirq.Circuit]:
-        """For now the VQE proxy benchmark is hardcoded to support only the
-        6 and 10 qubit benchmarks. The circuits for these are hardcoded in
-        qasm files.
+    def _gen_tfim_Hamiltonian(self) -> List:
+        r"""Generate an n-qubit Hamiltonian for a transverse-field Ising model (TFIM).
 
-        Returns a list of circuits in the same order that the counts should be
-        passed to `score`.
+            $H = \sum_i^n(X_i) + \sum_i^n(Z_i Z_{i+1})$
+
+        Example of a 6-qubit TFIM Hamiltonian:
+
+            $H_6 = XIIIII + IXIIII + IIXIII + IIIXII + IIIIXI + IIIIIX + ZZIIII
+                  + IZZIII + IIZZII + IIIZZI + IIIIZZ + ZIIIIZ$
         """
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        benchmark_circs = glob.glob(f"{dir_path}/qasm/new_{self.num_qubits}q*.qasm")
-        benchmark_circs = sorted(benchmark_circs, key=lambda x: int(x.split("_")[2]))
-        benchmark_circs = sorted(
-            benchmark_circs, key=lambda x: x.split("_")[-1].strip(".qasm"), reverse=True
-        )
+        H = []
+        for i in range(self.num_qubits):
+            H.append(["X", i, 1])  # [Pauli type, qubit idx, weight]
+        for i in range(self.num_qubits - 1):
+            H.append(["ZZ", (i, i + 1), 1])
+        H.append(["ZZ", (self.num_qubits - 1, 0), 1])
+        return H
 
-        circuits = []
-        for fn in benchmark_circs:
-            with open(fn, "r") as qasmfile:
-                qasm_str = ""
-                for line in qasmfile:
-                    # The circuits in the qasm files were compiled to the set {u, CX}
-                    # (which is what is technically in the paper), but the cirq
-                    # function circuit_from_qasm needs uppercase U
-                    if line[0] == "u":
-                        line = "U" + line[1:]
-                    qasm_str += line
+    def _gen_ansatz(self, params: List[float]) -> List[cirq.Circuit]:
+        qubits = cirq.LineQubit.range(self.num_qubits)
+        z_circuit = cirq.Circuit()
 
-            circuit = circuit_from_qasm(qasm_str)
+        param_counter = 0
+        for _ in range(self.num_layers):
+            # Ry rotation block
+            for i in range(self.num_qubits):
+                z_circuit.append(cirq.Ry(rads=2 * params[param_counter])(qubits[i]))
+                param_counter += 1
+            # Rz rotation block
+            for i in range(self.num_qubits):
+                z_circuit.append(cirq.Rz(rads=2 * params[param_counter])(qubits[i]))
+                param_counter += 1
+            # Entanglement block
+            for i in range(self.num_qubits - 1):
+                z_circuit.append(cirq.CX(qubits[i], qubits[i + 1]))
+            # Ry rotation block
+            for i in range(self.num_qubits):
+                z_circuit.append(cirq.Ry(rads=2 * params[param_counter])(qubits[i]))
+                param_counter += 1
+            # Rz rotation block
+            for i in range(self.num_qubits):
+                z_circuit.append(cirq.Rz(rads=2 * params[param_counter])(qubits[i]))
+                param_counter += 1
 
-            # circuit_from_qasm yields NamedQubits but we need LineQubits
-            qubits = cirq.LineQubit.range(self.num_qubits)
-            qubit_map = {cirq.NamedQubit(f"q_{i}"): qubits[i] for i in range(self.num_qubits)}
+        x_circuit = copy.deepcopy(z_circuit)
+        x_circuit.append(cirq.H(q) for q in qubits)
 
-            new_circuit = circuit.transform_qubits(qubit_map)
-            new_circuit += cirq.measure(*qubits)  # also add in measurements on all qubits
+        # Measure all qubits
+        z_circuit.append(cirq.measure(*qubits))
+        x_circuit.append(cirq.measure(*qubits))
 
-            circuits.append(new_circuit)
-
-        return circuits
+        return [z_circuit, x_circuit]
 
     def _parity_ones(self, bitstr: str) -> int:
         one_count = 0
@@ -72,64 +86,72 @@ class VQEProxy(Benchmark):
                 one_count += 1
         return one_count % 2
 
-    def _calc(self, key_list: List[str], key: str, H: int, counts: Counter) -> int:
-        for item in key_list:
+    def _calc(self, bit_list: List[str], bitstr: str, probs: Counter) -> float:
+        energy = 0.0
+        for item in bit_list:
             if self._parity_ones(item) == 0:
-                H += counts.get(key, 0)
+                energy += probs.get(bitstr, 0)
             else:
-                H -= counts.get(key, 0)
-        return H
+                energy -= probs.get(bitstr, 0)
+        return energy
 
-    def _get_H_val(self, counts_Z: Counter, counts_X: Counter) -> float:
-        H = 0
-        key_list_Z = []
-        key_list_X = []
+    def _get_expected_H_from_probs(self, probs_Z: Counter, probs_X: Counter) -> float:
+        avg_energy = 0.0
 
-        # 6 qubit, the key list corresponds to the terms in the Hamiltonian:
-        #    XIIIII + IXIIII + IIXIII + IIIXII + IIIIXI + IIIIIX + ZZIIII
-        #     + IZZIII + IIZZII + IIIZZI + IIIIZZ + ZIIIIZ
-        # NOTE: After HPCA submission, generalize this code
-        if self.num_qubits == 6:
-            for key in counts_X.keys():
-                key_list_X = [key[0], key[1], key[2], key[3], key[4], key[5]]
-                H = self._calc(key_list_X, key, H, counts_X)
-            for key in counts_Z.keys():
-                key_list_Z = [key[0:2], key[1:3], key[2:4], key[3:5], key[4:6], (key[0] + key[5])]
-                H = self._calc(key_list_Z, key, H, counts_Z)
+        # Find the contribution to the energy from the X-terms: \sum_i{X_i}
+        for bitstr in probs_X.keys():
+            bit_list_X = [bitstr[i] for i in range(len(bitstr))]
+            avg_energy += self._calc(bit_list_X, bitstr, probs_X)
 
-        # 10 qubit
-        if self.num_qubits == 10:
-            for key in counts_X.keys():
-                key_list_X = [
-                    key[0],
-                    key[1],
-                    key[2],
-                    key[3],
-                    key[4],
-                    key[5],
-                    key[6],
-                    key[7],
-                    key[8],
-                    key[9],
-                ]
-                H = self._calc(key_list_X, key, H, counts_X)
-            for key in counts_Z.keys():
-                key_list_Z = [
-                    key[0:2],
-                    key[1:3],
-                    key[2:4],
-                    key[3:5],
-                    key[4:6],
-                    key[5:7],
-                    key[6:8],
-                    key[7:9],
-                    key[8:10],
-                    (key[0] + key[9]),
-                ]
-                H = self._calc(key_list_Z, key, H, counts_Z)
+        # Find the contribution to the energy from the Z-terms: \sum_i{Z_i Z_{i+1}}
+        for bitstr in probs_Z.keys():
+            bit_list_Z = [bitstr[i - 1 : i + 1] for i in range(1, len(bitstr))]
+            bit_list_Z.append(bitstr[0] + bitstr[-1])  # Add the wrap-around term manually
+            avg_energy += self._calc(bit_list_Z, bitstr, probs_Z)
 
-        shots = sum(counts_Z.values())
-        return H / shots
+        return avg_energy
+
+    def _get_ideal_probs(self, circuit: cirq.Circuit) -> collections.Counter:
+        n = len(circuit.all_qubits())
+        ideal_counts = {}
+        for i, amplitude in enumerate(circuit.final_state_vector()):
+            bitstring = f"{i:>0{n}b}"
+            probability = np.abs(amplitude) ** 2
+            ideal_counts[bitstring] = probability
+        return collections.Counter(ideal_counts)
+
+    def _get_opt_angles(self) -> Tuple[List, float]:
+        def f(params: List) -> float:
+            z_circuit, x_circuit = self._gen_ansatz(params)
+            z_probs = self._get_ideal_probs(z_circuit)
+            x_probs = self._get_ideal_probs(x_circuit)
+            H_expect = self._get_expected_H_from_probs(z_probs, x_probs)
+
+            return -H_expect  # because we are minimizing instead of maximizing
+
+        init_params = [
+            np.random.uniform() * 2 * np.pi for _ in range(self.num_layers * 4 * self.num_qubits)
+        ]
+        out = scipy.optimize.minimize(f, init_params, method="COBYLA")
+
+        return out["x"], out["fun"]
+
+    def _gen_angles(self) -> List:
+        """Classically simulate the variational optimization and return
+        the final parameters.
+        """
+        params, _ = self._get_opt_angles()
+        return params
+
+    def circuit(self) -> List[cirq.Circuit]:
+        """Construct a parameterized ansatz.
+
+        Returns a list of circuits: the ansatz measured in the Z basis, and the
+        ansatz measured in the X basis. The counts obtained from evaluated these
+        two circuits should be passed to `score` in the same order they are
+        returned here.
+        """
+        return self._gen_ansatz(self._params)
 
     def score(self, counts: List[Counter]) -> float:
         """Compare the average energy measured by the experiments to the ideal
@@ -137,17 +159,20 @@ class VQEProxy(Benchmark):
         can be obtained through efficient classical means since the 1D TFIM
         is analytically solvable.
         """
-        counts_Z1, counts_Z2, counts_Z3, counts_X1, counts_X2, counts_X3 = counts
+        counts_Z, counts_X = counts
+        shots_Z = sum(counts_Z.values())
+        probs_Z = {bitstr: count / shots_Z for bitstr, count in counts_Z.items()}
+        shots_X = sum(counts_X.values())
+        probs_X = {bitstr: count / shots_X for bitstr, count in counts_X.items()}
+        experimental_H = self._get_expected_H_from_probs(
+            collections.Counter(probs_Z),
+            collections.Counter(probs_X),
+        )
 
-        if self.num_qubits == 6:
-            ideal_H = -7.42
-        elif self.num_qubits == 10:
-            ideal_H = -12.43
-
-        experimental_H_val1 = self._get_H_val(counts_Z1, counts_X1)
-        experimental_H_val2 = self._get_H_val(counts_Z2, counts_X2)
-        experimental_H_val3 = self._get_H_val(counts_Z3, counts_X3)
-
-        experimental_H = np.mean([experimental_H_val1, experimental_H_val2, experimental_H_val3])
+        circuit_Z, circuit_X = self.circuit()
+        ideal_H = self._get_expected_H_from_probs(
+            self._get_ideal_probs(circuit_Z),
+            self._get_ideal_probs(circuit_X),
+        )
 
         return float(1.0 - abs(ideal_H - experimental_H) / abs(2 * ideal_H))
