@@ -21,7 +21,8 @@ class QAOAVanillaProxy(Benchmark):
         #   1. Generate a random instance of an SK graph
         #   2. Find approximately optimal angles (rather than random values)
         self.Hamiltonian = self._gen_sk_Hamiltonian()
-        self.params = self._gen_angles()
+        #self.params = self._gen_angles()
+        self.params = [1, 1]
 
     def _gen_sk_Hamiltonian(self) -> List:
         """randomly pick +1 or -1 for each edge weight"""

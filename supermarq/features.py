@@ -9,6 +9,7 @@ from matplotlib.projections import register_projection
 from matplotlib.projections.polar import PolarAxes
 from matplotlib.spines import Spine
 from matplotlib.transforms import Affine2D
+from typing import Union
 
 
 def cirq_to_qiskit(circuit: cirq.Circuit) -> qiskit.circuit.QuantumCircuit:
@@ -16,8 +17,11 @@ def cirq_to_qiskit(circuit: cirq.Circuit) -> qiskit.circuit.QuantumCircuit:
     return qiskit.circuit.QuantumCircuit().from_qasm_str(str(qasm))
 
 
-def compute_connectivity(circuit: cirq.Circuit) -> float:
-    circ = cirq_to_qiskit(circuit)
+def compute_connectivity(circuit: Union[cirq.Circuit, qiskit.circuit.QuantumCircuit]) -> float:
+    if isinstance(circuit, cirq.Circuit):
+        circ = cirq_to_qiskit(circuit)
+    else:
+        circ = circuit
 
     N = circ.num_qubits
     dag = qiskit.converters.circuit_to_dag(circ)
@@ -33,8 +37,11 @@ def compute_connectivity(circuit: cirq.Circuit) -> float:
     return degree_sum / (N * (N - 1))
 
 
-def compute_liveness(circuit: cirq.Circuit) -> float:
-    circ = cirq_to_qiskit(circuit)
+def compute_liveness(circuit: Union[cirq.Circuit, qiskit.circuit.QuantumCircuit]) -> float:
+    if isinstance(circuit, cirq.Circuit):
+        circ = cirq_to_qiskit(circuit)
+    else:
+        circ = circuit
 
     N = circ.num_qubits
     dag = qiskit.converters.circuit_to_dag(circ)
@@ -50,15 +57,18 @@ def compute_liveness(circuit: cirq.Circuit) -> float:
     return np.sum(activity_matrix) / (N * dag.depth())
 
 
-def compute_parallelism(circuit: cirq.Circuit) -> float:
-    circ = cirq_to_qiskit(circuit)
+def compute_parallelism(circuit: Union[cirq.Circuit, qiskit.circuit.QuantumCircuit]) -> float:
+    if isinstance(circuit, cirq.Circuit):
+        circ = cirq_to_qiskit(circuit)
+    else:
+        circ = circuit
 
     dag = qiskit.converters.circuit_to_dag(circ)
     dag.remove_all_ops_named("barrier")
     return max(1 - (circ.depth() / len(dag.gate_nodes())), 0)
 
 
-def compute_measurement(circuit: cirq.Circuit) -> float:
+def compute_measurement(circuit: Union[cirq.Circuit, qiskit.circuit.QuantumCircuit]) -> float:
     """
     measurement feature = # of measurements / total gate count
 
@@ -68,7 +78,10 @@ def compute_measurement(circuit: cirq.Circuit) -> float:
     meas_op : int
         The number of Pauli strings that need to measured
     """
-    circ = cirq_to_qiskit(circuit)
+    if isinstance(circuit, cirq.Circuit):
+        circ = cirq_to_qiskit(circuit)
+    else:
+        circ = circuit
 
     N = circ.num_qubits
     n_m = 0
@@ -82,8 +95,11 @@ def compute_measurement(circuit: cirq.Circuit) -> float:
     return n_m / n_g
 
 
-def compute_entanglement(circuit: cirq.Circuit) -> float:
-    circ = cirq_to_qiskit(circuit)
+def compute_entanglement(circuit: Union[cirq.Circuit, qiskit.circuit.QuantumCircuit]) -> float:
+    if isinstance(circuit, cirq.Circuit):
+        circ = cirq_to_qiskit(circuit)
+    else:
+        circ = circuit
 
     dag = qiskit.converters.circuit_to_dag(circ)
     dag.remove_all_ops_named("barrier")
@@ -91,8 +107,11 @@ def compute_entanglement(circuit: cirq.Circuit) -> float:
     return len(dag.two_qubit_ops()) / len(dag.gate_nodes())
 
 
-def compute_depth(circuit: cirq.Circuit) -> float:
-    circ = cirq_to_qiskit(circuit)
+def compute_depth(circuit: Union[cirq.Circuit, qiskit.circuit.QuantumCircuit]) -> float:
+    if isinstance(circuit, cirq.Circuit):
+        circ = cirq_to_qiskit(circuit)
+    else:
+        circ = circuit
 
     dag = qiskit.converters.circuit_to_dag(circ)
     dag.remove_all_ops_named("barrier")
