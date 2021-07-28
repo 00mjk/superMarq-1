@@ -1,5 +1,6 @@
 from .benchmarks import benchmark
 from .benchmarks import bit_code
+from . import features
 from .benchmarks import ghz
 from .benchmarks import hamiltonian_simulation
 from .benchmarks import mermin_bell
@@ -11,6 +12,7 @@ from .benchmarks import vqe_proxy
 __all__ = [
     "benchmark",
     "bit_code",
+    "features",
     "ghz",
     "hamiltonian_simulation",
     "mermin_bell",
