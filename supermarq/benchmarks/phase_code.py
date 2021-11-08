@@ -30,7 +30,7 @@ class PhaseCode(Benchmark):
         self.num_rounds = num_rounds
         self.phase_state = phase_state
 
-    def _measurement_round_cirq(self, qubits: List[cirq.LineQubit]) -> None:
+    def _measurement_round_cirq(self, qubits: List[cirq.LineQubit], round_num: int) -> None:
         """
         Generates cirq ops for a single measurement round
 
@@ -38,12 +38,13 @@ class PhaseCode(Benchmark):
         - qubits: Circuit qubits - assumed data on even indices and
                   measurement on odd indices
         """
-        yield [cirq.ops.reset(qubits[i]) for i in range(1, len(qubits), 2)]
         yield [cirq.H(q) for q in qubits]
         for i in range(1, len(qubits), 2):
             yield cirq.CZ(qubits[i - 1], qubits[i])
             yield cirq.CZ(qubits[i + 1], qubits[i])
         yield [cirq.H(q) for q in qubits]
+        yield [cirq.measure(qubits[i], key=f'mcm{i}_{round_num}') for i in range(1, len(qubits), 2)]
+        yield [cirq.ops.reset(qubits[i]) for i in range(1, len(qubits), 2)]
 
     def circuit(self) -> cirq.Circuit:
         num_qubits = 2 * self.num_data_qubits - 1
@@ -57,7 +58,7 @@ class PhaseCode(Benchmark):
             circuit.append(cirq.H(qubits[2 * i]))
 
         # Apply measurement rounds
-        circuit.append(self._measurement_round_cirq(qubits) for _ in range(self.num_rounds))
+        circuit.append(self._measurement_round_cirq(qubits, r) for r in range(self.num_rounds))
 
         circuit.append(cirq.measure(*qubits))
 
