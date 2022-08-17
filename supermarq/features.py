@@ -70,29 +70,32 @@ def compute_parallelism(circuit: Union[cirq.Circuit, qiskit.circuit.QuantumCircu
 
 def compute_measurement(circuit: Union[cirq.Circuit, qiskit.circuit.QuantumCircuit]) -> float:
     """
-    measurement feature = # of measurements / total gate count
+    measurement feature = # of layers of mid-circuit measurement / circuit depth
 
     Input
     -----
     circ : QuantumCircuit
-    meas_op : int
-        The number of Pauli strings that need to measured
     """
     if isinstance(circuit, cirq.Circuit):
         circ = cirq_to_qiskit(circuit)
     else:
         circ = circuit
 
-    N = circ.num_qubits
-    n_m = 0
-    n_m += circ.count_ops().get("measure", N)
-    n_m += circ.count_ops().get("reset", 0)
-
     dag = qiskit.converters.circuit_to_dag(circ)
     dag.remove_all_ops_named("barrier")
-    n_g = len(dag.gate_nodes())
 
-    return n_m / n_g
+    reset_moments = 0
+    gate_depth = dag.depth() - 1
+
+    for layer in dag.layers():
+        reset_present = False
+        for op in layer['graph'].op_nodes():
+            if op.name == 'reset':
+                reset_present += True
+        if reset_present:
+            reset_moments += 1
+
+    return reset_moments / gate_depth
 
 
 def compute_entanglement(circuit: Union[cirq.Circuit, qiskit.circuit.QuantumCircuit]) -> float:

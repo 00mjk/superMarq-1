@@ -16,8 +16,6 @@ long_description = io.open("README.md", encoding="utf-8").read()
 # Read in requirements
 requirements = open("requirements.txt").readlines()
 requirements = [r.strip() for r in requirements]
-dev_requirements = open("dev-requirements.txt").readlines()
-dev_requirements = [r.strip() for r in dev_requirements]
 
 supermarq_packages = ["supermarq"] + [
     "supermarq." + package for package in find_packages(where="supermarq")
@@ -34,9 +32,7 @@ setup(
     author_email="pranav@super.tech",
     python_requires=(">=3.8.0"),
     install_requires=requirements,
-    extras_require={
-        "dev_env": dev_requirements,
-    },
+    extras_require={},
     license="N/A",
     description=description,
     long_description=long_description,

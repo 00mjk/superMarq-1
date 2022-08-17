@@ -149,7 +149,7 @@ class MerminBell(Benchmark):
 
             expect_val += numerator / sum(list(cur_counts.values()))
 
-        print("<mermin_op> =", expect_val)
+        #print("<mermin_op> =", expect_val)
         # so expect_val of 4 gives score of 1.0 and expect_val of -4 gives score of 0
         return (expect_val + 4) / 8
 
@@ -190,6 +190,6 @@ class MerminBell(Benchmark):
 
             expect_val += numerator / sum(list(cur_counts.values()))
 
-        print("<mermin_op> =", expect_val)
+        #print("<mermin_op> =", expect_val)
         # so expect_val of 8 gives score of 1.0 and expect_val of -8 gives score of 0
         return (expect_val + 8) / 16
